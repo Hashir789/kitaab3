@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "https://api.kitaab.me";
 
 export class ApiError extends Error {
   status: number;
@@ -13,7 +13,19 @@ export class ApiError extends Error {
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined>;
+  skipAuth?: boolean;
 };
+
+let tokenProvider: () => string | null = () => null;
+let unauthorizedHandler: () => void = () => {};
+
+export function setTokenProvider(provider: () => string | null): void {
+  tokenProvider = provider;
+}
+
+export function setUnauthorizedHandler(handler: () => void): void {
+  unauthorizedHandler = handler;
+}
 
 function buildUrl(path: string, query?: RequestOptions["query"]): string {
   const url = new URL(
@@ -33,7 +45,7 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
 const inFlight = new Map<string, Promise<unknown>>();
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, query, headers, method = "GET", signal, ...rest } = options;
+  const { body, query, headers, method = "GET", signal, skipAuth, ...rest } = options;
   const url = buildUrl(path, query);
 
   const isIdempotent = method === "GET" || method === "HEAD";
@@ -45,6 +57,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   const promise = (async () => {
+    const token = skipAuth ? null : tokenProvider();
+
     const response = await fetch(url, {
       ...rest,
       method,
@@ -52,6 +66,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       headers: {
         Accept: "application/json",
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -61,10 +76,23 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       let message = response.statusText;
       try {
         const data = await response.json();
-        if (data && typeof data.message === "string") message = data.message;
+        if (data) {
+          if (typeof data.message === "string") {
+            message = data.message;
+          } else if (Array.isArray(data.message) && data.message.length > 0) {
+            message = data.message.join(", ");
+          } else if (typeof data.error === "string") {
+            message = data.error;
+          }
+        }
       } catch {
         // response body was not JSON, fall back to statusText
       }
+
+      if (response.status === 401 && !skipAuth) {
+        unauthorizedHandler();
+      }
+
       throw new ApiError(response.status, message);
     }
 

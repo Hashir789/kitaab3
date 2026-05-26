@@ -1,3 +1,5 @@
+import { useAuth } from "../context/AuthContext.tsx";
+
 export type NavKey = "visitors" | "users";
 
 type NavItem = {
@@ -18,10 +20,14 @@ type SidebarProps = {
 };
 
 const Sidebar = ({ current, onSelect, isOpen, onClose }: SidebarProps) => {
+  const { loginEmail, logout } = useAuth();
+
   const handleSelect = (key: NavKey) => {
     onSelect(key);
     onClose();
   };
+
+  const initial = loginEmail ? loginEmail.charAt(0).toUpperCase() : "?";
 
   return (
     <>
@@ -64,6 +70,24 @@ const Sidebar = ({ current, onSelect, isOpen, onClose }: SidebarProps) => {
             );
           })}
         </nav>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <span className="sidebar-avatar" aria-hidden="true">
+              {initial}
+            </span>
+            <span className="sidebar-user-email" title={loginEmail ?? undefined}>
+              {loginEmail ?? "Signed in"}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="sidebar-signout"
+            onClick={logout}
+          >
+            Sign out
+          </button>
+        </div>
       </aside>
     </>
   );

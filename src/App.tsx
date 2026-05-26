@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Sidebar from "./components/Sidebar.tsx";
 import type { NavKey } from "./components/Sidebar.tsx";
+import { useAuth } from "./context/AuthContext.tsx";
+import LoginPage from "./pages/LoginPage.tsx";
 import VisitorsPage from "./pages/VisitorsPage.tsx";
 import UsersPage from "./pages/UsersPage.tsx";
 
@@ -10,8 +12,13 @@ const titles: Record<NavKey, string> = {
 };
 
 const App = () => {
+  const { isAuthenticated } = useAuth();
   const [current, setCurrent] = useState<NavKey>("visitors");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="app">
