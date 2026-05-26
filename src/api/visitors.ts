@@ -70,7 +70,7 @@ export type VisitorMessage = {
   name: string;
   email: string;
   subject: string;
-  phone: string;
+  phone: string | null;
   message: string;
   created_at: string;
 };
@@ -78,6 +78,46 @@ export type VisitorMessage = {
 export type VisitorMessagesAssociation = {
   anonymous_id: string;
   details: VisitorMessage[];
+};
+
+export type MessageRow = {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  phone: string | null;
+  message: string;
+  created_at: string;
+};
+
+export type MessagesTableResponse = {
+  rows: MessageRow[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type MessagesTableQuery = {
+  page?: number;
+  limit?: number;
+};
+
+export type EmailRow = {
+  id: string;
+  email: string;
+  created_at: string;
+};
+
+export type EmailsTableResponse = {
+  rows: EmailRow[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type EmailsTableQuery = {
+  page?: number;
+  limit?: number;
 };
 
 export type VisitorEmail = {
@@ -129,5 +169,13 @@ export const visitorsApi = {
   usersAssociation: (anonymousId: string) =>
     api.get<VisitorUsersAssociation>("/visitors/analytics", {
       query: { type: "users_association", anonymous_id: anonymousId },
+    }),
+  messagesTable: ({ page = 1, limit = 10 }: MessagesTableQuery = {}) =>
+    api.get<MessagesTableResponse>("/visitors/analytics", {
+      query: { type: "visitor_messages_table", page, limit },
+    }),
+  emailsTable: ({ page = 1, limit = 10 }: EmailsTableQuery = {}) =>
+    api.get<EmailsTableResponse>("/visitors/analytics", {
+      query: { type: "visitor_emails_table", page, limit },
     }),
 };

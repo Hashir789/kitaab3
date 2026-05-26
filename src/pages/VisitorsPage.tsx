@@ -1,12 +1,15 @@
 import { useState } from "react";
 import BarList from "../components/BarList.tsx";
 import DonutChart from "../components/DonutChart.tsx";
+import EmailsTable from "../components/EmailsTable.tsx";
+import MessageDetail from "../components/MessageDetail.tsx";
+import MessagesTable from "../components/MessagesTable.tsx";
 import SegmentedControl from "../components/SegmentedControl.tsx";
 import StatCard from "../components/StatCard.tsx";
 import VisitorDetail from "../components/VisitorDetail.tsx";
 import VisitorsTable from "../components/VisitorsTable.tsx";
 import { useVisitorsSummary } from "../hooks/useVisitorsSummary.ts";
-import type { VisitorRow } from "../api/visitors.ts";
+import type { MessageRow, VisitorRow } from "../api/visitors.ts";
 
 type ActivityTab = "visitors" | "messages" | "emails";
 
@@ -20,12 +23,22 @@ const VisitorsPage = () => {
   const { data, error, loading, refetch } = useVisitorsSummary();
   const [activeTab, setActiveTab] = useState<ActivityTab>("visitors");
   const [selectedVisitor, setSelectedVisitor] = useState<VisitorRow | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<MessageRow | null>(null);
 
   if (selectedVisitor) {
     return (
       <VisitorDetail
         visitor={selectedVisitor}
         onBack={() => setSelectedVisitor(null)}
+      />
+    );
+  }
+
+  if (selectedMessage) {
+    return (
+      <MessageDetail
+        message={selectedMessage}
+        onBack={() => setSelectedMessage(null)}
       />
     );
   }
@@ -94,11 +107,9 @@ const VisitorsPage = () => {
                 <VisitorsTable onSelect={setSelectedVisitor} />
               )}
               {activeTab === "messages" && (
-                <div className="muted">Messages content goes here.</div>
+                <MessagesTable onSelect={setSelectedMessage} />
               )}
-              {activeTab === "emails" && (
-                <div className="muted">Emails content goes here.</div>
-              )}
+              {activeTab === "emails" && <EmailsTable />}
             </div>
           </section>
         </div>

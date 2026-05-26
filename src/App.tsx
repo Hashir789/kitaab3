@@ -11,12 +11,28 @@ const titles: Record<NavKey, string> = {
 
 const App = () => {
   const [current, setCurrent] = useState<NavKey>("visitors");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="app">
-      <Sidebar current={current} onSelect={setCurrent} />
+      <Sidebar
+        current={current}
+        onSelect={setCurrent}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
       <main className="main">
         <div className="topbar">
+          <button
+            type="button"
+            className="topbar-menu"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open menu"
+          >
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+          </button>
           <span className="topbar-title">{titles[current]}</span>
         </div>
         <div className="content">
