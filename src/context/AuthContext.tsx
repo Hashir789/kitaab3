@@ -12,6 +12,7 @@ import { authApi } from "../api/auth.ts";
 import type { AuthUser, LoginResponse } from "../api/auth.ts";
 import { setTokenProvider, setUnauthorizedHandler } from "../api/client.ts";
 import { getAnonymousId } from "../lib/anonymousId.ts";
+import { getTokenExpiryMs, isTokenExpired } from "../lib/jwt.ts";
 import { readJSON, readString, remove, writeJSON, writeString } from "../lib/storage.ts";
 
 const TOKEN_KEY = "kitaab.auth.token";
@@ -37,15 +38,36 @@ type AuthProviderProps = {
   children: ReactNode;
 };
 
+const readValidToken = (): string | null => {
+  const stored = readString(TOKEN_KEY);
+  if (!stored) return null;
+  if (isTokenExpired(stored)) {
+    remove(TOKEN_KEY);
+    remove(USER_KEY);
+    remove(EMAIL_KEY);
+    return null;
+  }
+  return stored;
+};
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [token, setToken] = useState<string | null>(() => readString(TOKEN_KEY));
-  const [user, setUser] = useState<AuthUser | null>(() => readJSON<AuthUser>(USER_KEY));
-  const [loginEmail, setLoginEmail] = useState<string | null>(() => readString(EMAIL_KEY));
+  const [token, setToken] = useState<string | null>(() => readValidToken());
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    readString(TOKEN_KEY) ? readJSON<AuthUser>(USER_KEY) : null,
+  );
+  const [loginEmail, setLoginEmail] = useState<string | null>(() =>
+    readString(TOKEN_KEY) ? readString(EMAIL_KEY) : null,
+  );
 
   const tokenRef = useRef(token);
   tokenRef.current = token;
+  const expiryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearSession = useCallback(() => {
+    if (expiryTimerRef.current) {
+      clearTimeout(expiryTimerRef.current);
+      expiryTimerRef.current = null;
+    }
     remove(TOKEN_KEY);
     remove(USER_KEY);
     remove(EMAIL_KEY);
@@ -54,10 +76,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoginEmail(null);
   }, []);
 
+  const scheduleExpiry = useCallback(
+    (accessToken: string) => {
+      if (expiryTimerRef.current) {
+        clearTimeout(expiryTimerRef.current);
+        expiryTimerRef.current = null;
+      }
+      const expMs = getTokenExpiryMs(accessToken);
+      if (expMs === null) return;
+      const delay = expMs - Date.now();
+      if (delay <= 0) {
+        clearSession();
+        return;
+      }
+      expiryTimerRef.current = setTimeout(clearSession, delay);
+    },
+    [clearSession],
+  );
+
+  // Register synchronously during render so child effects on initial mount
+  // see the token and 401 handler before they fire their first requests.
+  setTokenProvider(() => tokenRef.current);
+  setUnauthorizedHandler(clearSession);
+
   useEffect(() => {
-    setTokenProvider(() => tokenRef.current);
-    setUnauthorizedHandler(clearSession);
-  }, [clearSession]);
+    if (token) scheduleExpiry(token);
+    return () => {
+      if (expiryTimerRef.current) {
+        clearTimeout(expiryTimerRef.current);
+        expiryTimerRef.current = null;
+      }
+    };
+  }, [token, scheduleExpiry]);
 
   const login = useCallback(async (email: string, password: string) => {
     if (

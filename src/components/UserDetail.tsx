@@ -1,5 +1,7 @@
 import type { UserRow } from "../api/users.ts";
+import { useUserVisitors } from "../hooks/useUserVisitors.ts";
 import { calculateAge, formatDate, formatDateTime } from "../lib/dates.ts";
+import UserVisitors from "./UserVisitors.tsx";
 
 type Props = {
   user: UserRow;
@@ -7,6 +9,8 @@ type Props = {
 };
 
 const UserDetail = ({ user, onBack }: Props) => {
+  const visitors = useUserVisitors(Number(user.visitor_id));
+
   return (
     <div className="stack">
       <button type="button" className="back-link" onClick={onBack}>
@@ -72,6 +76,13 @@ const UserDetail = ({ user, onBack }: Props) => {
           </div>
         </dl>
       </section>
+
+      <UserVisitors
+        data={visitors.data?.details}
+        loading={visitors.loading}
+        error={visitors.error}
+        onRetry={visitors.refetch}
+      />
     </div>
   );
 };

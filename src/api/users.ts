@@ -58,6 +58,22 @@ export type UsersTableQuery = {
   limit?: number;
 };
 
+export type UserVisitor = {
+  id: string;
+  anonymous_id: string;
+  timezone: string;
+  device_type: string;
+  clicks: number;
+  navigations: number;
+  number_of_visits: number;
+  last_visited: string;
+};
+
+export type UserVisitorsAssociation = {
+  anonymous_id: string;
+  details: UserVisitor[];
+};
+
 export const usersApi = {
   list: (params: UserQuery = {}) =>
     api.get<{ items: User[]; nextCursor?: string }>("/users", { query: params }),
@@ -69,5 +85,9 @@ export const usersApi = {
   table: ({ page = 1, limit = 10 }: UsersTableQuery = {}) =>
     api.get<UsersTableResponse>("/users/analytics", {
       query: { type: "users_table", page, limit },
+    }),
+  visitorsAssociation: (id: number) =>
+    api.get<UserVisitorsAssociation>("/users/analytics", {
+      query: { type: "visitors_association", id },
     }),
 };
